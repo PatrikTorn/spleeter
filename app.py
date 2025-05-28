@@ -6,7 +6,7 @@ from pydub import AudioSegment
 from youtubesearchpython import VideosSearch
 from flask import jsonify, request
 from pytube import YouTube
-
+import yt_dlp
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
@@ -34,6 +34,7 @@ def youtube_search():
 
     return jsonify(videos)
 
+
 @app.route('/process_youtube')
 def process_youtube():
     video_id = request.args.get('video_id')
@@ -41,28 +42,30 @@ def process_youtube():
         return "Missing video_id", 400
 
     try:
-        
-        try:
-            yt = YouTube(f"https://youtube.com/watch?v={video_id}")
-            print("✅ YouTube title:", yt.title)
-            streams = yt.streams.filter(only_audio=True)
-            print("✅ Streams found:", streams)
-            stream = streams.first()
-            if stream is None:
-                return "❌ No audio-only stream found", 500
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return f"❌ Failed during stream selection: {e}", 500
-
         temp_folder = os.path.join("uploads", str(uuid.uuid4()))
         os.makedirs(temp_folder, exist_ok=True)
 
-        audio_path = os.path.join(temp_folder, f"{yt.title}.mp3")
-        print("📥 Saving to:", audio_path)
-        stream.download(output_path=temp_folder, filename=f"{yt.title}.mp3")
+        # Configure yt-dlp to download and convert to mp3
+        output_path = os.path.join(temp_folder, "%(title).200s.%(ext)s")
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': output_path,
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }]
+        }
 
-        # Reuse the existing process logic
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([f'https://youtube.com/watch?v={video_id}'])
+
+        # Find the downloaded MP3
+        audio_path = next((os.path.join(temp_folder, f) for f in os.listdir(temp_folder) if f.endswith('.mp3')), None)
+        if not audio_path:
+            return "MP3 file not found", 500
+
+        # Process with spleeter
         output_dir = os.path.join("processed", str(uuid.uuid4()))
         os.makedirs(output_dir, exist_ok=True)
 
@@ -73,10 +76,10 @@ def process_youtube():
             audio_path
         ], check=True)
 
-        # Mixing tracks
         base_name = os.path.splitext(os.path.basename(audio_path))[0]
         result_folder = os.path.join(output_dir, base_name)
 
+        # Combine vocals + bass + other (skip drums)
         vocals = AudioSegment.from_wav(os.path.join(result_folder, 'vocals.wav'))
         bass = AudioSegment.from_wav(os.path.join(result_folder, 'bass.wav'))
         other = AudioSegment.from_wav(os.path.join(result_folder, 'other.wav'))
@@ -88,6 +91,8 @@ def process_youtube():
         return send_file(output_mix_path, as_attachment=True, download_name='no_drums.wav')
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return f"Failed: {e}", 500
 
 @app.route('/process', methods=['POST'])
