@@ -41,13 +41,16 @@ def process_youtube():
         return "Missing video_id", 400
 
     try:
+        print("🔍 Downloading from YouTube...")
         yt = YouTube(f"https://youtube.com/watch?v={video_id}")
         stream = yt.streams.filter(only_audio=True).first()
+        print("✅ Stream selected:", stream)
 
         temp_folder = os.path.join("uploads", str(uuid.uuid4()))
         os.makedirs(temp_folder, exist_ok=True)
 
         audio_path = os.path.join(temp_folder, f"{yt.title}.mp3")
+        print("📥 Saving to:", audio_path)
         stream.download(output_path=temp_folder, filename=f"{yt.title}.mp3")
 
         # Reuse the existing process logic
