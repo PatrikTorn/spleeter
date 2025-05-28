@@ -2,7 +2,6 @@ import os
 import uuid
 import subprocess
 from flask import Flask, request, send_file, render_template
-from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
@@ -20,7 +19,7 @@ def process():
         return 'No file uploaded.'
 
     file = request.files['file']
-    filename = secure_filename(file.filename)
+    filename = file.filename
     input_path = os.path.join(UPLOAD_FOLDER, filename)
     file.save(input_path)
 

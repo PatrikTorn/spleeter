@@ -22,7 +22,7 @@ pip install -r requirements.txt
 
 ## Deploy
 pkill -f app.py
-nohup python app.py > flask.log 2>&1 &
+nohup python3 app.py > flask.log 2>&1 &
 
 ## ⚙️ Setup on Amazon Linux EC2
 
