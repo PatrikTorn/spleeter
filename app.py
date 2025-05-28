@@ -3,6 +3,10 @@ import uuid
 import subprocess
 from flask import Flask, request, send_file, render_template
 from pydub import AudioSegment
+from youtubesearchpython import VideosSearch
+from flask import jsonify, request
+from pytube import YouTube
+
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
@@ -13,6 +17,66 @@ os.makedirs(PROCESSED_FOLDER, exist_ok=True)
 @app.route('/', methods=['GET'])
 def index():
     return render_template('index.html')
+
+
+@app.route('/youtube_search')
+def youtube_search():
+    query = request.args.get('q')
+    if not query:
+        return jsonify([])
+
+    results = VideosSearch(query, limit=5).result()['result']
+    videos = [{
+        'title': v['title'],
+        'video_id': v['id'],
+        'thumbnail': v['thumbnails'][0]['url']
+    } for v in results]
+
+    return jsonify(videos)
+
+@app.route('/process_youtube')
+def process_youtube():
+    video_id = request.args.get('video_id')
+    if not video_id:
+        return "Missing video_id", 400
+
+    try:
+        yt = YouTube(f"https://youtube.com/watch?v={video_id}")
+        stream = yt.streams.filter(only_audio=True).first()
+
+        temp_folder = os.path.join("uploads", str(uuid.uuid4()))
+        os.makedirs(temp_folder, exist_ok=True)
+
+        audio_path = os.path.join(temp_folder, f"{yt.title}.mp3")
+        stream.download(output_path=temp_folder, filename=f"{yt.title}.mp3")
+
+        # Reuse the existing process logic
+        output_dir = os.path.join("processed", str(uuid.uuid4()))
+        os.makedirs(output_dir, exist_ok=True)
+
+        subprocess.run([
+            'spleeter', 'separate',
+            '-p', 'spleeter:4stems',
+            '-o', output_dir,
+            audio_path
+        ], check=True)
+
+        # Mixing tracks
+        base_name = os.path.splitext(os.path.basename(audio_path))[0]
+        result_folder = os.path.join(output_dir, base_name)
+
+        vocals = AudioSegment.from_wav(os.path.join(result_folder, 'vocals.wav'))
+        bass = AudioSegment.from_wav(os.path.join(result_folder, 'bass.wav'))
+        other = AudioSegment.from_wav(os.path.join(result_folder, 'other.wav'))
+
+        combined = vocals.overlay(bass).overlay(other)
+        output_mix_path = os.path.join(result_folder, 'no_drums.wav')
+        combined.export(output_mix_path, format='wav')
+
+        return send_file(output_mix_path, as_attachment=True, download_name='no_drums.wav')
+
+    except Exception as e:
+        return f"Failed: {e}", 500
 
 @app.route('/process', methods=['POST'])
 def process():
@@ -61,6 +125,8 @@ def process():
         return "Processing failed"
 
     return send_file(output_mix_path, as_attachment=True, download_name='no_drums.wav')
+
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
