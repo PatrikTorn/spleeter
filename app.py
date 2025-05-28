@@ -41,11 +41,19 @@ def process_youtube():
         return "Missing video_id", 400
 
     try:
-        print("🔍 Downloading from YouTube...")
-        yt = YouTube(f"https://youtube.com/watch?v={video_id}")
-        print("✅ Yt created:")
-        stream = yt.streams.filter(only_audio=True).first()
-        print("✅ Stream selected:", stream)
+        
+        try:
+            yt = YouTube(f"https://youtube.com/watch?v={video_id}")
+            print("✅ YouTube title:", yt.title)
+            streams = yt.streams.filter(only_audio=True)
+            print("✅ Streams found:", streams)
+            stream = streams.first()
+            if stream is None:
+                return "❌ No audio-only stream found", 500
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return f"❌ Failed during stream selection: {e}", 500
 
         temp_folder = os.path.join("uploads", str(uuid.uuid4()))
         os.makedirs(temp_folder, exist_ok=True)
