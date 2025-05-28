@@ -37,15 +37,14 @@ def youtube_search():
 
 @app.route('/process_youtube')
 def process_youtube():
-    video_id = request.args.get('video_id')
-    if not video_id:
-        return "Missing video_id", 400
+    video_url = request.args.get('video_url')
+    if not video_url:
+        return "Missing video_url", 400
 
     try:
         temp_folder = os.path.join("uploads", str(uuid.uuid4()))
         os.makedirs(temp_folder, exist_ok=True)
 
-        # Configure yt-dlp to download and convert to mp3
         output_path = os.path.join(temp_folder, "%(title).200s.%(ext)s")
         ydl_opts = {
             'format': 'bestaudio/best',
@@ -54,13 +53,12 @@ def process_youtube():
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
                 'preferredquality': '192',
-            }]
+            }],
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([f'https://youtube.com/watch?v={video_id}'])
+            ydl.download([video_url])
 
-        # Find the downloaded MP3
         audio_path = next((os.path.join(temp_folder, f) for f in os.listdir(temp_folder) if f.endswith('.mp3')), None)
         if not audio_path:
             return "MP3 file not found", 500
