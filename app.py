@@ -37,7 +37,7 @@ def youtube_search():
 
 @app.route('/process_youtube')
 def process_youtube():
-    video_url = request.args.get('video_url')
+    video_url = 'https://www.youtube.com/watch?v=STlGn9Nauoo'
     if not video_url:
         return "Missing video_url", 400
 
