@@ -12,6 +12,18 @@ This simple Flask app allows users to upload an MP3 file and get a version with 
 
 ---
 
+
+### Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+### Install dependencies
+pip install -r requirements.txt
+
+## Deploy
+pkill -f app.py
+nohup python app.py > flask.log 2>&1 &
+
 ## ⚙️ Setup on Amazon Linux EC2
 
 ### 1. Connect to EC2
