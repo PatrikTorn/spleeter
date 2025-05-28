@@ -42,11 +42,8 @@ def process_youtube():
 
     try:
         print("🔍 Downloading from YouTube...")
-        try:
-            yt = YouTube(f"https://youtube.com/watch?v={video_id}")
-        except Exception as e:
-            return f"Failed to initialize YouTube object: {e}", 500
-
+        yt = YouTube(f"https://youtube.com/watch?v={video_id}")
+        print("✅ Yt created:")
         stream = yt.streams.filter(only_audio=True).first()
         print("✅ Stream selected:", stream)
 
