@@ -35,9 +35,35 @@
             }
         }
     </script>
+
+    <script>
+        async function processSoundCloud(event) {
+            event.preventDefault();
+            const url = document.getElementById('soundcloudUrl').value;
+            const response = await fetch(`/process_soundcloud?url=${encodeURIComponent(url)}`);
+            if (response.ok) {
+                const blob = await response.blob();
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = "no_drums.wav";
+                link.click();
+            } else {
+                alert('Processing failed.');
+            }
+        }
+    </script>
+
+    
 </head>
 <body>
     <h1>Remove Drums from MP3</h1>
+
+    <h2>Enter SoundCloud Track URL</h2>
+    <form onsubmit="processSoundCloud(event)">
+        <input type="text" id="soundcloudUrl" placeholder="https://soundcloud.com/artist/track" required>
+        <button type="submit">Remove Drums</button>
+    </form>
+
 
     <input type="text" id="search" placeholder="Search a song">
     <button onclick="searchYouTube()">Search</button>

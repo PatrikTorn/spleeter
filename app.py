@@ -95,6 +95,62 @@ def process_youtube():
         traceback.print_exc()
         return f"Failed: {e}", 500
 
+@app.route('/process_soundcloud')
+def process_soundcloud():
+    track_url = request.args.get('url')
+    if not track_url:
+        return "Missing SoundCloud track URL", 400
+
+    try:
+        temp_folder = os.path.join("uploads", str(uuid.uuid4()))
+        os.makedirs(temp_folder, exist_ok=True)
+
+        output_path = os.path.join(temp_folder, "%(title).200s.%(ext)s")
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': output_path,
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }]
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([track_url])
+
+        audio_path = next((os.path.join(temp_folder, f) for f in os.listdir(temp_folder) if f.endswith('.mp3')), None)
+        if not audio_path:
+            return "MP3 file not found", 500
+
+        output_dir = os.path.join("processed", str(uuid.uuid4()))
+        os.makedirs(output_dir, exist_ok=True)
+
+        subprocess.run([
+            'spleeter', 'separate',
+            '-p', 'spleeter:4stems',
+            '-o', output_dir,
+            audio_path
+        ], check=True)
+
+        base_name = os.path.splitext(os.path.basename(audio_path))[0]
+        result_folder = os.path.join(output_dir, base_name)
+
+        vocals = AudioSegment.from_wav(os.path.join(result_folder, 'vocals.wav'))
+        bass = AudioSegment.from_wav(os.path.join(result_folder, 'bass.wav'))
+        other = AudioSegment.from_wav(os.path.join(result_folder, 'other.wav'))
+
+        combined = vocals.overlay(bass).overlay(other)
+        output_mix_path = os.path.join(result_folder, 'no_drums.wav')
+        combined.export(output_mix_path, format='wav')
+
+        return send_file(output_mix_path, as_attachment=True, download_name='no_drums.wav')
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return f"Failed: {e}", 500
+
 @app.route('/process', methods=['POST'])
 def process():
     if 'file' not in request.files or request.files['file'].filename == '':
