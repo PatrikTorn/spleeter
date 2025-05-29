@@ -14,8 +14,9 @@ This simple Flask app allows users to upload an MP3 file and get a version with 
 
 
 ### Create and activate virtual environment
-python3 -m venv venv
-source venv/bin/activate
+(only first time) python3 -m venv venv
+source tfenv/bin/activate
+python3 app.py
 
 ### Install dependencies
 pip install -r requirements.txt

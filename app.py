@@ -49,6 +49,7 @@ def process_youtube():
         output_path = os.path.join(temp_folder, "%(title).200s.%(ext)s")
         ydl_opts = {
             'format': 'bestaudio/best',
+            'cookiefile': '/home/ec2-user/spleeter/cookies.txt',  # ✅ Add full path to the file
             'outtmpl': output_path,
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
